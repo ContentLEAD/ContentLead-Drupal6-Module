@@ -1,0 +1,5 @@
+; $Id$
+name = Brafton Scheduled Feed Importer
+description = Imports news articles from Brafton feeds on a scheduled basis.
+package = Feed Parser
+core = 6.x
