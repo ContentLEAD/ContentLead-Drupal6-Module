@@ -37,28 +37,28 @@ function brafton_perm() {
                  'delete any b_news content', 
                  'edit own b_news content', 
                  'edit any b_news content');
-	}
+  }
  
 /**
  * Implementation of hook_access() - allows Drupal to determine 
  * user access rights for standard node actions.
  */
 function brafton_access($op, $node, $account) {
-	if ($op == 'create') {
-		return user_access('create b_news content', $account);
-	  }
+  if ($op == 'create') {
+    return user_access('create b_news content', $account);
+    }
 
-	  if ($op == 'update') {
-		if (user_access('edit any b_news content', $account) || (user_access('edit own b_news content', $account) && ($account->uid == $node->uid))) {
-		  return TRUE;
-		}
-	  }
+    if ($op == 'update') {
+    if (user_access('edit any b_news content', $account) || (user_access('edit own b_news content', $account) && ($account->uid == $node->uid))) {
+      return TRUE;
+    }
+    }
 
-	  if ($op == 'delete') {
-		if (user_access('delete any b_news content', $account) || (user_access('delete own b_news content', $account) && ($account->uid == $node->uid))) {
-		  return TRUE;
-		}
-	  }
+    if ($op == 'delete') {
+    if (user_access('delete any b_news content', $account) || (user_access('delete own b_news content', $account) && ($account->uid == $node->uid))) {
+      return TRUE;
+    }
+    }
 }
  
 /**
@@ -90,9 +90,9 @@ function brafton_block($op = 'list', $delta = 0) {
   else if ($op == 'view') {
     if (user_access('access content')) {
       $result = db_query_range(db_rewrite_sql("SELECT n.nid, n.title, n.created 
-	    FROM {node} n LEFT JOIN {brafton} b ON n.nid = b.nid
-		WHERE n.type = 'b_news' AND n.status = 1 AND  b.feed_id = $delta
-		ORDER BY n.created DESC"), 0, 5);
+      FROM {node} n LEFT JOIN {brafton} b ON n.nid = b.nid
+    WHERE n.type = 'b_news' AND n.status = 1 AND  b.feed_id = $delta
+    ORDER BY n.created DESC"), 0, 5);
       if ($node_title_list = node_title_list($result)) {
         $block['content'] = $node_title_list;
         $block['content'] .= theme('more_link', url('b_news'), t('Read breaking news.'));
@@ -158,8 +158,8 @@ function brafton_form(&$node) {
  * Implementation of hook_delete().
  */
 function brafton_delete($node) {
-	db_query('DELETE FROM {brafton} WHERE nid = %d', $node->nid);
-	db_query('DELETE FROM {brafton_pictures} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {brafton} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {brafton_pictures} WHERE nid = %d', $node->nid);
 }
  
 /**
@@ -173,24 +173,56 @@ function brafton_admin() {
         $array[$users["uid"]] = $users["name"];
   }  
   
+  $bases = array(
+    "http://api.brafton.com/"=>"http://api.brafton.com/",
+    "http://api.contentlead.com/"=>"http://api.contentlead.com/",
+    "http://api.castleford.com.au/"=>"http://api.castleford.com.au/",
+  );
+
+  $publish = array(
+    "Published"=>"Published",
+    "Last Modified"=>"Last Modified",
+  );
+
   $form['brafton_author0'] = array(
-	'#type' => 'select', 
-	'#title' => t('Feed #0 Author'), 
+  '#type' => 'select', 
+  '#title' => t('Feed #0 Author'), 
     '#default_value' => variable_get('brafton_author0', 0),
-	'#options' => $array,
+  '#options' => $array,
     );
+
+
   
   //one form for each feed URL to be loaded
   for($i = 0; $i < NUM_FEEDS; $i++){
+    $form["brafton_feedbase$i"] = array(
+      '#type' => 'select',
+      '#title' => t("Feed URL Base"),
+      '#default_value' => variable_get("brafton_feedbase$i", ''),
+      '#description' => t("This is the base of the URL to your uniqueXML feed."),
+      '#options' => $bases,
+      '#required' => TRUE,
+    );
+
     $form["brafton_feedurl$i"] = array(
       '#type' => 'textfield',
       '#title' => t("Brafton XML feed URL: Feed #$i"),
       '#default_value' => variable_get("brafton_feedurl$i", ''),
       '#size' => 50,
       '#maxlength' => 255,
-      '#description' => t("This is the URL to your unique BraftonXML feed."),
+      '#description' => t("This is the api key to your unique XML feed."),
       '#required' => TRUE,
     );
+    $form["brafton_feeddate$i"] = array(
+      '#type' => 'select',
+      '#title' => t("Date Options"),
+      '#default_value' => variable_get("brafton_feeddate$i", ''),
+      '#description' => t("Order Articles by Publish Date or Last Modified Date"),
+      '#options' => $publish,
+      '#required' => TRUE,
+    );
+
+
   } //end loop
 
   //the following should be implemented to allow UI control of check frequency
@@ -248,7 +280,9 @@ function brafton_menu() {
 function _brafton_load_feed($feednum){
   
   $doc = new DOMDocument();
-  $url = variable_get("brafton_feedurl$feednum", '');
+  $base = variable_get("brafton_feedbase$feednum", '');
+  $apikey = variable_get("brafton_feedurl$feednum", '');
+  $url = $base.$apikey."/news";
 
   //load XML as string
   if($url != "null") {
@@ -327,166 +361,166 @@ function _brafton_load_newpath($link){
  
 
 function brafton_cron() {
-	if(DEBUG) {
-		$fp = fopen('log.txt', 'w');
-		fclose($fp);
-	}
+  if(DEBUG) {
+    $fp = fopen('log.txt', 'w');
+    fclose($fp);
+  }
 
-	//make sure Brafton News vocabulary exists, create it if it doesn't
-	_brafton_update_vocabulary();
+  //make sure Brafton News vocabulary exists, create it if it doesn't
+  _brafton_update_vocabulary();
 
-	//Could potentially handle multiple feeds for one site.
-	for($feednum = 0; $feednum < NUM_FEEDS; $feednum++){  
-		$xpath = _brafton_load_feed($feednum);
-		if($xpath == null) continue;  //bypass empty XML "gracefully"
+  //Could potentially handle multiple feeds for one site.
+  for($feednum = 0; $feednum < NUM_FEEDS; $feednum++){  
+    $xpath = _brafton_load_feed($feednum);
+    if($xpath == null) continue;  //bypass empty XML "gracefully"
     
-		// Select all Article nodes and loop through them 
-		$articles = $xpath->evaluate("//newsListItem");   
-		for ($i = 0; $i < $articles->length; $i++) {
-			$currentArticle = $articles->item($i);
-			$id = $xpath->evaluate('id', $currentArticle)->item(0)->nodeValue;
-			$publishDate = strtotime($xpath->evaluate('publishDate', $currentArticle)->item(0)->nodeValue);     
-			$lastModified = strtotime($xpath->evaluate('lastModifiedDate', $currentArticle)->item(0)->nodeValue); 
-			
-			//get url of article and create new xpath
-			$link = $currentArticle->getAttribute('href');
-			$xpathArray = _brafton_load_newpath($link);
-			$xpathNews = $xpathArray[0];
-			$iarticle = $xpathNews->evaluate("//newsItem");
-			$ciarticle = $iarticle->item(0);              
-        
-			//initialize the node object, either by loading an existing node
-			//or by creating a new one if the article is fresh
-			if($updateId = _brafton_node_exists($id)){
-				$result_obj = db_query("SELECT last_modified FROM {brafton} WHERE dn_id = '%d'", $id);
-				$result = db_fetch_array($result_obj); 
-				
-				$changedDate = $result['last_modified'];
-				
-				if ( $lastModified > $changedDate ) {
-					$node = node_load($updateId);
-					$updatedArticle = true;	
-				} else {
-					$updatedArticle = false;
-				}
-			} else{ 
-				
-				$updatedArticle = false;
-
-				//create node object with some default values 
-				$node = array(
-					'nid' => null,
-					'type' => 'b_news',
-					'date' => $publishDate,
-					'log' => 'cron created',
-					'format' => 2,
-					'promote' => 0                                
-				);
-				$node = (object)$node;  
-			}
+    // Select all Article nodes and loop through them 
+    $articles = $xpath->evaluate("//newsListItem");   
+    for ($i = 0; $i < $articles->length; $i++) {
+      $currentArticle = $articles->item($i);
+      $id = $xpath->evaluate('id', $currentArticle)->item(0)->nodeValue;
+      $publishDate = strtotime($xpath->evaluate('publishDate', $currentArticle)->item(0)->nodeValue);     
+      $lastModified = strtotime($xpath->evaluate('lastModifiedDate', $currentArticle)->item(0)->nodeValue); 
       
-			if(!$updateId || $updatedArticle) { 
-	  
-				//load these values from the feed for all nodes, new and updated
-				$node->title = $xpath->evaluate('headline', $currentArticle)->item(0)->nodeValue;
-				$node->body =  $xpathNews->evaluate('text', $ciarticle)->item(0)->nodeValue;
-				$node->teaser =  $xpathNews->evaluate('extract', $ciarticle)->item(0)->nodeValue;
-		  
-				if(!$updateId) { 
-					node_submit($node);
-				}
-				
-				$node->created = $publishDate;
-				$node->timestamp = $publishDate;
-		  
-				$author = variable_get("brafton_author$feednum", 0);
-				$node->uid = $author;
-		  
-				node_save($node);
-		  
-				//TABLE: {brafton}
-				if($updateId == NULL) $key = array();
-				else $key = array('nid');
-				$braftonData =   array(
-					'nid' => $node->nid,
-					'feed_id' => $feednum,
-					'dn_id' => $id,
-					'headline' => $longheading = $xpath->evaluate('headline', $currentArticle)->item(0)->nodeValue,
-					//'keyword' => $keyword = $xpathNews->evaluate('keyword', $ciarticle)->item(0)->nodeValue,
-					//'source' => $source = $xpathNews->evaluate('source', $ciarticle)->item(0)->nodeValue,
-					//'byline' => $byline = $xpathNews->evaluate('byline', $ciarticle)->item(0)->nodeValue,
-					'last_modified' => $lastModified
-				);
-				drupal_write_record('brafton', $braftonData, $key);
-		  
-				//save a second time to trigger URL generation, presumably with newly 
-				//saved article ID
-				node_save($node);
+      //get url of article and create new xpath
+      $link = $currentArticle->getAttribute('href');
+      $xpathArray = _brafton_load_newpath($link);
+      $xpathNews = $xpathArray[0];
+      $iarticle = $xpathNews->evaluate("//newsItem");
+      $ciarticle = $iarticle->item(0);              
+        
+      //initialize the node object, either by loading an existing node
+      //or by creating a new one if the article is fresh
+      if($updateId = _brafton_node_exists($id)){
+        $result_obj = db_query("SELECT last_modified FROM {brafton} WHERE dn_id = '%d'", $id);
+        $result = db_fetch_array($result_obj); 
+        
+        $changedDate = $result['last_modified'];
+        
+        if ( $lastModified > $changedDate ) {
+          $node = node_load($updateId);
+          $updatedArticle = true; 
+        } else {
+          $updatedArticle = false;
+        }
+      } else{ 
+        
+        $updatedArticle = false;
 
-				//TABLE: {brafton_picture}
-				if($updateId == NULL) $pickey = array();
-				else $pickey = array('nid');
-		  
-				$xpathPic = $xpathArray[1];
-				$pictree = $xpathPic->evaluate('//photo'); //NodeList Object
-				$picNode = $pictree->item(0);
-				if($xpathPic->evaluate('//photo')->item(0) != NULL){
-		  
-					$result_obj = db_query("SELECT * FROM {content_node_field} WHERE field_name = 'field_brafton_image'");
-					$result = db_fetch_array($result_obj);    
+        //create node object with some default values 
+        $node = array(
+          'nid' => null,
+          'type' => 'b_news',
+          'date' => $publishDate,
+          'log' => 'cron created',
+          'format' => 2,
+          'promote' => 0                                
+        );
+        $node = (object)$node;  
+      }
+      
+      if(!$updateId || $updatedArticle) { 
+    
+        //load these values from the feed for all nodes, new and updated
+        $node->title = $xpath->evaluate('headline', $currentArticle)->item(0)->nodeValue;
+        $node->body =  $xpathNews->evaluate('text', $ciarticle)->item(0)->nodeValue;
+        $node->teaser =  $xpathNews->evaluate('extract', $ciarticle)->item(0)->nodeValue;
+      
+        if(!$updateId) { 
+          node_submit($node);
+        }
+        
+        $node->created = $publishDate;
+        $node->timestamp = $publishDate;
+      
+        $author = variable_get("brafton_author$feednum", 0);
+        $node->uid = $author;
+      
+        node_save($node);
+      
+        //TABLE: {brafton}
+        if($updateId == NULL) $key = array();
+        else $key = array('nid');
+        $braftonData =   array(
+          'nid' => $node->nid,
+          'feed_id' => $feednum,
+          'dn_id' => $id,
+          'headline' => $longheading = $xpath->evaluate('headline', $currentArticle)->item(0)->nodeValue,
+          //'keyword' => $keyword = $xpathNews->evaluate('keyword', $ciarticle)->item(0)->nodeValue,
+          //'source' => $source = $xpathNews->evaluate('source', $ciarticle)->item(0)->nodeValue,
+          //'byline' => $byline = $xpathNews->evaluate('byline', $ciarticle)->item(0)->nodeValue,
+          'last_modified' => $lastModified
+        );
+        drupal_write_record('brafton', $braftonData, $key);
+      
+        //save a second time to trigger URL generation, presumably with newly 
+        //saved article ID
+        node_save($node);
 
-					if($result) {
-				
-						$image_url = $xpathPic->evaluate("photo/instances/instance/url")->item(0)->nodeValue;
-						$image = file_get_contents($image_url);
-						$file_temp = file_save_data($image, file_directory_temp() . '/brafton_images/' . basename($image_url), FILE_EXISTS_REPLACE);
+        //TABLE: {brafton_picture}
+        if($updateId == NULL) $pickey = array();
+        else $pickey = array('nid');
+      
+        $xpathPic = $xpathArray[1];
+        $pictree = $xpathPic->evaluate('//photo'); //NodeList Object
+        $picNode = $pictree->item(0);
+        if($xpathPic->evaluate('//photo')->item(0) != NULL){
+      
+          $result_obj = db_query("SELECT * FROM {content_node_field} WHERE field_name = 'field_brafton_image'");
+          $result = db_fetch_array($result_obj);    
 
-						$field = content_fields('field_brafton_image', 'b_news');
-						$validators = array_merge(filefield_widget_upload_validators($field), imagefield_widget_upload_validators($field));
-						$files_path = filefield_widget_file_path($field). '/brafton_images/';
-						$file = field_file_save_file($file_temp, $validators, $files_path, FILE_EXISTS_REPLACE);
+          if($result) {
+        
+            $image_url = $xpathPic->evaluate("photo/instances/instance/url")->item(0)->nodeValue;
+            $image = file_get_contents($image_url);
+            $file_temp = file_save_data($image, file_directory_temp() . '/brafton_images/' . basename($image_url), FILE_EXISTS_REPLACE);
 
-						$node->field_brafton_image[] = $file;
-						
-						//$node = node_submit($node);
-						node_save($node);
-					}
-				
-					$pictureData = array (
-						'nid' => $node->nid,
-						'caption' => $xpathPic->evaluate('photo/caption')->item(0)->nodeValue,
-						'large_url' => $xpathPic->evaluate('photo/instances/instance/url')->item(0)->nodeValue,
-						'lwidth' => $xpathPic->evaluate('photo/instances/instance/width')->item(0)->nodeValue,
-						'lheight' => $xpathPic->evaluate('photo/instances/instance/height')->item(0)->nodeValue,
-						'small_url' => $xpathPic->evaluate('photo/instances/instance/url')->item(1)->nodeValue,
-						'swidth' =>  $xpathPic->evaluate('photo/instances/instance/url/width')->item(1)->nodeValue,
-						'sheight' =>  $xpathPic->evaluate('photo/instances/instance/url/height')->item(1)->nodeValue,
-					);
-					drupal_write_record('brafton_pictures', $pictureData, $pickey);  
-				}
-		  
-				//TABLE: {brafton_term} & {term_node}   
-				//get 'categories' data
-				$xpathCat = $xpathArray[2];
-				$catID = $xpathCat->evaluate('//category/id'); //NodeList Object
-				$catN = $xpathCat->evaluate('//category/name');
-		  
-				$terms = array();
-				$catarrayID = array();
-				$catarrayName = array();
-				foreach ($catID as $item){
-					$catarrayID[]  = $item->nodeValue;
-				}
-				foreach ($catN as $item){
-					$catarrayName[]  = $item->nodeValue;
-				}
-				for($j=0; $j < count($catarrayID); $j++){
-					$terms["$catId"] = _brafton_term($catarrayID[$j], $catarrayName[$j]);       
-					taxonomy_node_save($node, $terms);
-				}	 
-			}
-		}                 
-	}
+            $field = content_fields('field_brafton_image', 'b_news');
+            $validators = array_merge(filefield_widget_upload_validators($field), imagefield_widget_upload_validators($field));
+            $files_path = filefield_widget_file_path($field). '/brafton_images/';
+            $file = field_file_save_file($file_temp, $validators, $files_path, FILE_EXISTS_REPLACE);
+
+            $node->field_brafton_image[] = $file;
+            
+            //$node = node_submit($node);
+            node_save($node);
+          }
+        
+          $pictureData = array (
+            'nid' => $node->nid,
+            'caption' => $xpathPic->evaluate('photo/caption')->item(0)->nodeValue,
+            'large_url' => $xpathPic->evaluate('photo/instances/instance/url')->item(0)->nodeValue,
+            'lwidth' => $xpathPic->evaluate('photo/instances/instance/width')->item(0)->nodeValue,
+            'lheight' => $xpathPic->evaluate('photo/instances/instance/height')->item(0)->nodeValue,
+            'small_url' => $xpathPic->evaluate('photo/instances/instance/url')->item(1)->nodeValue,
+            'swidth' =>  $xpathPic->evaluate('photo/instances/instance/url/width')->item(1)->nodeValue,
+            'sheight' =>  $xpathPic->evaluate('photo/instances/instance/url/height')->item(1)->nodeValue,
+          );
+          drupal_write_record('brafton_pictures', $pictureData, $pickey);  
+        }
+      
+        //TABLE: {brafton_term} & {term_node}   
+        //get 'categories' data
+        $xpathCat = $xpathArray[2];
+        $catID = $xpathCat->evaluate('//category/id'); //NodeList Object
+        $catN = $xpathCat->evaluate('//category/name');
+      
+        $terms = array();
+        $catarrayID = array();
+        $catarrayName = array();
+        foreach ($catID as $item){
+          $catarrayID[]  = $item->nodeValue;
+        }
+        foreach ($catN as $item){
+          $catarrayName[]  = $item->nodeValue;
+        }
+        for($j=0; $j < count($catarrayID); $j++){
+          $terms["$catId"] = _brafton_term($catarrayID[$j], $catarrayName[$j]);       
+          taxonomy_node_save($node, $terms);
+        }  
+      }
+    }                 
+  }
   print "Articles loaded.";
 }
 
@@ -539,7 +573,7 @@ function _brafton_term($catid, $catname) {
   if(DEBUG) $fp = fopen('log.txt', 'a');
   $tid = _brafton_term_exists($catid);
   //term exists - return tid
-  if($tid != null) {	
+  if($tid != null) {  
     return $tid;
   }
   //term does not exist - add new term and all necessary data
@@ -552,17 +586,17 @@ function _brafton_term($catid, $catname) {
     );
     drupal_write_record('term_data', $termData);
 
-	if(DEBUG) {
-	  ob_start();
+  if(DEBUG) {
+    ob_start();
       var_dump($termData);
       fwrite($fp, "\tterm inserted: " . ob_get_contents() . "\n");
-	  ob_end_clean();
-	}
-	
+    ob_end_clean();
+  }
+  
     $hierarchyData = array(
       'tid' => $termData['tid'],
       'parent' => '0'
-    );	
+    );  
     drupal_write_record('term_hierarchy', $hierarchyData);
     
     $braftonTData = array(
@@ -572,7 +606,7 @@ function _brafton_term($catid, $catname) {
     drupal_write_record('brafton_term', $braftonTData);
     
     if(DEBUG) fclose($fp);    
-	return $termData['tid'];
+  return $termData['tid'];
   }
 // }
 }
@@ -590,11 +624,11 @@ function _brafton_term_exists($dncid) {
   $res_array = db_fetch_array($res);
   if($res_array){
     if(DEBUG) {
-	  ob_start();
+    ob_start();
       var_dump($res_array);
       fwrite($fp, "\tmatched for array " . ob_get_contents() . "\n");
       fclose($fp);
-	  ob_end_clean();
+    ob_end_clean();
     }
     return $res_array['tid'];
   } else {
