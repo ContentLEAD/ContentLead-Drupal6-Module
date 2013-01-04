@@ -210,7 +210,7 @@ function brafton_admin() {
       '#default_value' => variable_get("brafton_feedurl$i", ''),
       '#size' => 50,
       '#maxlength' => 255,
-      '#description' => t("This is the api key to your unique XML feed."),
+      '#description' => t("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx<br/>This is the api key to your unique XML feed."),
       '#required' => TRUE,
     );
     $form["brafton_feeddate$i"] = array(
