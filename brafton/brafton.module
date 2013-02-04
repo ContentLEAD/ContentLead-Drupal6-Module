@@ -292,7 +292,7 @@ function _brafton_load_feed($feednum){
   }
   
   //switch encoding to prevent bad character errors
-  $encodedfeed = iconv("ISO-8859-1", "UTF-8", $sourcefeed);
+  $encodedfeed = $sourcefeed;
   
   //populate DOM, get XPath from DOM
   $doc->loadXML($encodedfeed);
@@ -327,13 +327,13 @@ function _brafton_load_newpath($link){
   for($i = 0; $i < 3; $i++){
     switch ($i) {
         case 0:
-            $encodedfeed = iconv("ISO-8859-1", "UTF-8", $sourcefeed);
+            $encodedfeed = $sourcefeed;
             break;
         case 1:
-            $encodedfeed = iconv("ISO-8859-1", "UTF-8", $sourcefeed2);
+            $encodedfeed = $sourcefeed2;
             break;
         case 2:
-            $encodedfeed = iconv("ISO-8859-1", "UTF-8", $sourcefeed3);
+            $encodedfeed = $sourcefeed3;
             break;
     }
         //populate DOM, get XPath from DOM
