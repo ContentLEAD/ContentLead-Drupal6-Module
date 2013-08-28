@@ -1,5 +1,3 @@
-; $Id$
-name = Brafton Scheduled Feed Importer
-description = Imports news articles from Brafton feeds on a scheduled basis.
-package = Feed Parser
+name = Brafton video importer
+description = Imports video content from the video feed supplied by brafton.
 core = 6.x
