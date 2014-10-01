@@ -179,8 +179,8 @@ function brafton_cron()	{
 
 	$key = imp_info();
 
-	$baseURL = "http://api.video.brafton.com/v2/";
-	$photoURI = "http://pictures.directnews.co.uk/v2/";
+	$baseURL = "http://livevideo.api.brafton.com/v2/";
+	$photoURI = "http://pictures.brafton.com/v2/";
 	$videoClient = new AdferoVideoClient( $baseURL,$key['public'],$key['secret'] );
 	$client = new AdferoClient( $baseURL,$key['public'],$key['secret'] );
 	$photoClient = new AdferoPhotoClient( $photoURI );
